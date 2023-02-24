@@ -78,21 +78,6 @@ class HrPayslip(models.Model):
         required=True,
         tracking=True,
         default='undefined')
-
-    l10n_co_dian_status1 = fields.Selection(
-        selection=[
-            ('rechazada', 'Rechazada'),
-            ('en_proceso', 'Por validar'),
-            ('exitosa', 'Exitosa'),
-        ],
-        string='DIAN status',
-        help='Refers to the status of the invoice inside the DIAN system.',
-        readonly=True,
-        copy=False,
-        required=True,
-        tracking=True,
-        default='en_proceso')
-    
     l10n_co_pac_status = fields.Selection(
         selection=[
             ('retry', 'Retry'),
@@ -590,11 +575,10 @@ class HrPayslip(models.Model):
             if line_values.code == '1116' or line_values.code == '1216' or line_values.code == '1316':
                 if self.vacaciones_compensadas:
                     vacaciones = '<Vacaciones><VacacionesCompensadas Cantidad="' + str(int(self.numero_dias_vac_com)) + '" Pago="' + str(line_values.total) + '"/> </Vacaciones>'
-                elif self.is_liquid:
-                    vacaciones = '<Vacaciones><VacacionesCompensadas Cantidad="' + str(int(self.numero_dias_vac_com/24)) + '" Pago="' + str(line_values.total) + '"/> </Vacaciones>'
+                    _logger.info(vacaciones)
                 else:
                     for _vacaciones in self.leaves_ids:
-                        if _vacaciones.holiday_status_id.code == 'VACACIONES DE DISFRUTE':
+                        if _vacaciones.holiday_status_id.name == 'VACACIONES DE DISFRUTE':
                             cantidad = _vacaciones.duration_display
                             try:
                                 cantidad = float(str(cantidad).replace(" day(s)", ""))
@@ -606,6 +590,7 @@ class HrPayslip(models.Model):
                             vacaciones = '<Vacaciones><VacacionesComunes FechaInicio="' + \
                             str(_vacaciones.date_from.strftime('%Y-%m-%d')) +'" FechaFin="' + \
                             str(_vacaciones.date_to.strftime('%Y-%m-%d')) + '" Cantidad="' + str(int(cantidad)) + '" Pago="' + str(line_values.total) + '"/> </Vacaciones>'
+                            _logger.info(vacaciones)
             # prima
             if line_values.code == '1118' or line_values.code == '1218' or line_values.code == '1318':
                 print("primas...................##################################################################")
@@ -624,7 +609,7 @@ class HrPayslip(models.Model):
                     if line_eps.code == '1006':
                         pago += line_eps.total
                 for lines_leaves in self.leaves_ids:
-                    if lines_leaves.holiday_status_id.code == "EPS":
+                    if lines_leaves.holiday_status_id.name == "EPS":
                         cantidad = lines_leaves.duration_display
                         try:
                             cantidad = float(str(cantidad).replace(" day(s)", ""))
@@ -646,15 +631,15 @@ class HrPayslip(models.Model):
                     pass
                     
                 for lines_leaves in self.leaves_ids:
-                    if lines_leaves.holiday_status_id.code == "EPS_maternidad":
-                        cantidad = int(lines_leaves.number_of_days)
-                        #try:
-                            #cantidad = float(str(cantidad).replace(" day(s)", ""))
-                        #except:
-                            #cantidad = float(str(cantidad).replace(" dia(s)", ""))
+                    if lines_leaves.holiday_status_id.name == "EPS_maternidad":
+                        cantidad = lines_leaves.duration_display
+                        try:
+                            cantidad = float(str(cantidad).replace(" day(s)", ""))
+                        except:
+                            cantidad = float(str(cantidad).replace(" dia(s)", ""))
                         licenciasmp += '<LicenciaMP FechaInicio="%(hora_inicio)s" FechaFin="%(hora_fin)s" Cantidad="%(cantidad)s" Pago="%(pago)s"/>' % {'hora_inicio': lines_leaves.date_from.strftime("%Y-%m-%d"),
                                                                                                                                                         'hora_fin': lines_leaves.date_to.strftime("%Y-%m-%d"),
-                                                                                                                                                        'cantidad': cantidad,
+                                                                                                                                                        'cantidad': lines_leaves.duration_display,
                                                                                                                                                         'pago': line_values.total}
 
             if line_values.code == '1003':
@@ -664,18 +649,15 @@ class HrPayslip(models.Model):
                     pass
                     
                 for lines_leaves in self.leaves_ids:
-                    if lines_leaves.holiday_status_id.code == "EPS_paternidad":
+                    if lines_leaves.holiday_status_id.name == "EPS_paternidad":
                         cantidad = lines_leaves.duration_display
                         try:
                             cantidad = float(str(cantidad).replace(" day(s)", ""))
                         except:
-                            try:
-                                cantidad = float(str(cantidad).replace(" dia(s)", ""))
-                            except:
-                                cantidad = float(str(cantidad).replace(" días", ""))
+                            cantidad = float(str(cantidad).replace(" dia(s)", ""))
                         licenciasmp += '<LicenciaMP FechaInicio="%(hora_inicio)s" FechaFin="%(hora_fin)s" Cantidad="%(cantidad)s" Pago="%(pago)s"/>' % {'hora_inicio': lines_leaves.date_from.strftime("%Y-%m-%d"),
                                                                                                                                                         'hora_fin': lines_leaves.date_to.strftime("%Y-%m-%d"),
-                                                                                                                                                        'cantidad': cantidad,
+                                                                                                                                                        'cantidad': lines_leaves.duration_display,
                                                                                                                                                         'pago': line_values.total}
 
 
@@ -686,18 +668,15 @@ class HrPayslip(models.Model):
                     pass
 
                 for lines_leaves in self.leaves_ids:
-                    if lines_leaves.holiday_status_id.code == "luto":
+                    if lines_leaves.holiday_status_id.name == "luto":
                         cantidad = lines_leaves.duration_display
                         try:
                             cantidad = float(str(cantidad).replace(" day(s)", ""))
                         except:
-                            try:
-                                cantidad = float(str(cantidad).replace(" dia(s)", ""))
-                            except:
-                                cantidad = float(str(cantidad).replace(" días", ""))
+                            cantidad = float(str(cantidad).replace(" dia(s)", ""))
                         licenciasmp += '<LicenciaR FechaInicio="%(hora_inicio)s" FechaFin="%(hora_fin)s" Cantidad="%(cantidad)s" Pago="%(pago)s"/>' % {'hora_inicio': lines_leaves.date_from.strftime("%Y-%m-%d"),
                                                                                                                                                         'hora_fin': lines_leaves.date_to.strftime("%Y-%m-%d"),
-                                                                                                                                                        'cantidad': cantidad,
+                                                                                                                                                        'cantidad': lines_leaves.duration_display,
                                                                                                                                                         'pago': line_values.total}
 
             if line_values.code == '1010':    
@@ -707,7 +686,7 @@ class HrPayslip(models.Model):
                     pass
 
                 for lines_leaves in self.leaves_ids:
-                    if lines_leaves.holiday_status_id.code == "AUSENCIA_NO_REMUNERADO":
+                    if lines_leaves.holiday_status_id.name == "AUSENCIA_NO_REMUNERADO":
                         cantidad = lines_leaves.duration_display
                         try:
                             cantidad = float(str(cantidad).replace(" day(s)", ""))
@@ -805,11 +784,8 @@ class HrPayslip(models.Model):
                 devengados += '<Primas Cantidad="' + \
                     str(numero_liquidacion_prima) + '" ' + \
                     'Pago="' + str(prima) + '" />'
-        if PagoIntereses != 0 : #Pago en Enero de Intereses
-            devengados += '<Cesantias Pago="' + \
-                str(PagoCesan) + '" ' + 'Porcentaje="12"' + \
-                ' PagoIntereses="' + str(PagoIntereses) + '" />'
-        elif PagoCesan != 0 :
+        if PagoCesan != 0:
+            _logger.info("andres"*20)
             devengados += '<Cesantias Pago="' + \
                 str(PagoCesan) + '" ' + 'Porcentaje="12"' + \
                 ' PagoIntereses="' + str(PagoIntereses) + '" />'
@@ -1463,7 +1439,7 @@ class HrPayslip(models.Model):
                 response_dict = xmltodict.parse(response.content)
                 dian_response_dict = response_dict.get("s:Envelope", {}).get("s:Body", {}).get("GetStatusZipResponse", {}).get("GetStatusZipResult", {}).get("b:DianResponse", {})
                 if dian_response_dict.get("b:IsValid", "false") == "true":
-                    self.l10n_co_dian_status1 = "exitosa"
+                    self.l10n_co_dian_status = "valid"
                 else:
                     self.message_post(body=dian_response_dict.get("b:StatusDescription", ''))
         else:
@@ -1473,9 +1449,11 @@ class HrPayslip(models.Model):
             response = requests.post(url, data=getstatus_xml_send, headers=headers)
             if response.status_code == 200:
                 response_dict = xmltodict.parse(response.content)
+                _logger.info(":"*600)
+                _logger.info(response_dict.get("s:Envelope", {}).get("s:Body", {}))
                 dian_response_dict = response_dict.get("s:Envelope", {}).get("s:Body", {}).get("GetStatusResponse", {}).get("GetStatusResult", {})
                 if dian_response_dict.get("b:IsValid", "false") == "true":
-                    self.l10n_co_dian_status1 = "exitosa"
+                    self.l10n_co_dian_status = "valid"
                 else:
                     msg = dian_response_dict.get("b:StatusDescription", '')
                     for error in dian_response_dict.get("b:ErrorMessage", {}).get("c:string", []):
@@ -1484,7 +1462,7 @@ class HrPayslip(models.Model):
 
     def l10n_co_check_trackid_status(self):
         for record in self:
-            if record.l10n_co_dian_status1 in ('en_proceso') and record.trackid:
+            if record.l10n_co_dian_status in ('none', 'undefined') and record.trackid:
                 record._l10n_co_check()
 
 
@@ -1964,6 +1942,7 @@ class HrPayslip(models.Model):
         payslip_template = self.payslip_main_template()
         result = self.generate_payslip_main(payslip_template)
         result = '<?xml version="1.0" encoding="UTF-8"?>' + result
+        _logger.info(result)
         result = base64.b64encode(result.encode("utf-8"))
         archivo_key = dian_constants['document_repository'] + '/' + dian_constants['archivo_certificado']
         CerificadoEmpleadorB64 = open(archivo_key, 'rb').read()
@@ -2006,10 +1985,11 @@ class HrPayslip(models.Model):
                 response_dict = xmltodict.parse(response.content)
                 dian_response_dict = response_dict.get("s:Envelope", {}).get("s:Body", {}).get("GetStatusZipResponse", {}).get("GetStatusZipResult", {}).get("b:DianResponse", {})
                 if dian_response_dict.get("b:IsValid", "false") == "true":
-                    self.l10n_co_dian_status1 = "exitosa"
+                    self.l10n_co_dian_status = "valid"
                 else:
                     msg = dian_response_dict.get("b:StatusDescription", '')
             else:
+                _logger.info("-"*600)
                 response_dict = xmltodict.parse(response.content)
                 self.trackid = response_dict.get("s:Envelope", {}).get("s:Body", {}).get("SendNominaSyncResponse", {}).get("SendNominaSyncResult", {}).get("b:XmlDocumentKey", '')
                 if response_dict.get("s:Envelope", {}).get("s:Body", {}).get("SendNominaSyncResponse", {}).get("SendNominaSyncResult", {}).get("b:IsValid", "false") == "false":
